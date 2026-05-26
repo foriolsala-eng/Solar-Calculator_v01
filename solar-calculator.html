@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Solar PV">
+<meta name="theme-color" content="#BA7517">
+<title>Solar PV Calculator</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --accent: #E8A020; --accent2: #1D9E75;
+    --bg: #f5f4f0; --bg-card: #ffffff; --bg-sec: #f1efe8;
+    --text: #1a1a18; --text-sec: #5f5e5a; --text-ter: #888780;
+    --border: rgba(0,0,0,0.10); --border-sec: rgba(0,0,0,0.18);
+    --radius: 10px; --radius-lg: 14px;
+    --amber-fill: #FAEEDA; --amber-text: #854F0B; --amber-mid: #BA7517;
+    --teal-fill: #E1F5EE; --teal-text: #0F6E56;
+    --red-fill: #FCEBEB; --red-text: #A32D2D;
+    --green-fill: #EAF3DE; --green-text: #3B6D11;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a18; --bg-card: #26261f; --bg-sec: #2c2c2a;
+      --text: #f0ede6; --text-sec: #b4b2a9; --text-ter: #888780;
+      --border: rgba(255,255,255,0.10); --border-sec: rgba(255,255,255,0.18);
+      --amber-fill: #412402; --amber-text: #FAC775; --amber-mid: #EF9F27;
+      --teal-fill: #04342C; --teal-text: #9FE1CB;
+      --red-fill: #501313; --red-text: #F7C1C1;
+      --green-fill: #173404; --green-text: #C0DD97;
+    }
+  }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; font-size: 15px; min-height: 100vh; }
+  .app { max-width: 480px; margin: 0 auto; padding: 0 0 80px; }
+  .topbar { background: var(--bg-card); border-bottom: 0.5px solid var(--border); padding: 54px 16px 12px; position: sticky; top: 0; z-index: 100; }
+  .topbar-inner { display: flex; align-items: center; gap: 10px; }
+  .topbar-icon { width: 32px; height: 32px; background: var(--amber-fill); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .topbar-icon i { font-size: 18px; color: var(--amber-mid); }
+  .topbar h1 { font-size: 17px; font-weight: 600; color: var(--text); }
+  .topbar p { font-size: 12px; color: var(--text-sec); }
+  .tabs { display: flex; gap: 0; background: var(--bg-card); border-bottom: 0.5px solid var(--border); overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { flex: 1; min-width: 80px; padding: 10px 8px 8px; font-size: 11px; font-weight: 500; text-align: center; cursor: pointer; color: var(--text-ter); border: none; background: transparent; border-bottom: 2px solid transparent; white-space: nowrap; }
+  .tab.active { color: var(--amber-mid); border-bottom-color: var(--amber-mid); }
+  .tab i { display: block; font-size: 18px; margin-bottom: 2px; }
+  .content { padding: 16px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .section { background: var(--bg-card); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 12px; }
+  .section-title { font-size: 11px; font-weight: 600; color: var(--text-ter); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; display: flex; align-items: center; gap: 5px; }
+  .field { margin-bottom: 12px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { font-size: 13px; color: var(--text-sec); display: block; margin-bottom: 5px; }
+  .field input, .field select { width: 100%; font-size: 15px; padding: 10px 12px; border: 0.5px solid var(--border-sec); border-radius: var(--radius); background: var(--bg-sec); color: var(--text); -webkit-appearance: none; appearance: none; }
+  .field select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .field-row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .slider-block { margin-bottom: 14px; }
+  .slider-block label { font-size: 13px; color: var(--text-sec); display: flex; justify-content: space-between; margin-bottom: 6px; }
+  .slider-block label span { font-weight: 600; color: var(--text); }
+  .slider-block input[type=range] { width: 100%; -webkit-appearance: none; height: 4px; border-radius: 2px; background: var(--border-sec); outline: none; }
+  .slider-block input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: var(--amber-mid); border: 2px solid var(--bg-card); box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+  .btn-primary { width: 100%; padding: 14px; background: var(--amber-mid); color: #fff; border: none; border-radius: var(--radius-lg); font-size: 15px; font-weight: 600; cursor: pointer; }
+  .btn-sec { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 11px; font-size: 14px; border: 0.5px solid var(--border-sec); border-radius: var(--radius); background: transparent; cursor: pointer; color: var(--text-sec); margin-bottom: 10px; }
+  .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .metric { background: var(--bg-sec); border-radius: var(--radius); padding: 12px; }
+  .metric.accent { background: var(--amber-fill); }
+  .metric.teal { background: var(--teal-fill); }
+  .metric .lbl { font-size: 11px; color: var(--text-ter); margin-bottom: 3px; }
+  .metric.accent .lbl { color: var(--amber-mid); }
+  .metric.teal .lbl { color: var(--teal-text); }
+  .metric .val { font-size: 22px; font-weight: 600; color: var(--text); }
+  .metric.accent .val { color: var(--amber-text); }
+  .metric.teal .val { color: var(--teal-text); }
+  .metric .unit { font-size: 11px; color: var(--text-ter); }
+  .row-info { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 0.5px solid var(--border); font-size: 14px; }
+  .row-info:last-child { border-bottom: none; }
+  .row-info .k { color: var(--text-sec); }
+  .row-info .v { font-weight: 600; color: var(--text); }
+  .badge { display: inline-block; font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 500; }
+  .badge.ok { background: var(--green-fill); color: var(--green-text); }
+  .badge.warn { background: var(--amber-fill); color: var(--amber-text); }
+  .badge.err { background: var(--red-fill); color: var(--red-text); }
+  .note { font-size: 12px; color: var(--text-sec); line-height: 1.6; padding: 10px 12px; background: var(--bg-sec); border-radius: var(--radius); margin-top: 10px; }
+  .chart-wrap { position: relative; width: 100%; }
+  .pr-bar { height: 10px; border-radius: 5px; background: var(--bg-sec); margin: 8px 0; overflow: hidden; }
+  .pr-fill { height: 100%; border-radius: 5px; background: var(--accent2); transition: width 0.4s; }
+  .status-row { display: flex; align-items: center; gap: 8px; padding: 10px 0; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .dot-g { background: #639922; }
+  .dot-a { background: #BA7517; }
+  .dot-r { background: #E24B4A; }
+  table.log { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.log th { color: var(--text-ter); font-weight: 500; text-align: left; padding: 5px 4px; border-bottom: 0.5px solid var(--border); }
+  table.log td { padding: 6px 4px; border-bottom: 0.5px solid var(--border); color: var(--text); }
+  table.log tr:last-child td { border-bottom: none; }
+  #loc-msg { font-size: 12px; color: var(--text-sec); margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="topbar-icon"><i class="ti ti-sun"></i></div>
+      <div>
+        <h1>Solar PV Calculator</h1>
+        <p>Irradiancia · Temperatura · Generación</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('ubicacion')"><i class="ti ti-map-pin"></i>Ubicación</button>
+    <button class="tab" onclick="switchTab('instalacion')"><i class="ti ti-solar-panel"></i>Sistema</button>
+    <button class="tab" onclick="switchTab('piranometro')"><i class="ti ti-device-analytics"></i>Piranómetro</button>
+    <button class="tab" onclick="switchTab('resultados')"><i class="ti ti-chart-bar"></i>Resultados</button>
+  </div>
+
+  <div class="content">
+
+    <!-- UBICACIÓN -->
+    <div class="panel active" id="panel-ubicacion">
+      <div class="section">
+        <div class="section-title"><i class="ti ti-map-pin"></i> Coordenadas</div>
+        <div class="field-row" style="margin-bottom:10px">
+          <div class="field"><label>Latitud</label><input type="number" id="lat" value="14.64" step="0.01" inputmode="decimal" oninput="onLatLonChange()"></div>
+          <div class="field"><label>Longitud</label><input type="number" id="lon" value="-90.51" step="0.01" inputmode="decimal" oninput="onLatLonChange()"></div>
+        </div>
+        <button class="btn-sec" onclick="getLocation()"><i class="ti ti-gps"></i> Usar mi ubicación GPS</button>
+        <div id="loc-msg"></div>
+      </div>
+      <div class="section">
+        <div class="section-title"><i class="ti ti-cloud"></i> Meteorología estimada</div>
+        <div class="metric-grid">
+          <div class="metric accent"><div class="lbl">Irradiancia GHI</div><div class="val" id="m-ghi">5.4</div><div class="unit">kWh/m²/día</div></div>
+          <div class="metric"><div class="lbl">Temperatura</div><div class="val" id="m-temp">22</div><div class="unit">°C promedio</div></div>
+          <div class="metric"><div class="lbl">Viento</div><div class="val" id="m-wind">3.2</div><div class="unit">m/s</div></div>
+          <div class="metric"><div class="lbl">Humedad</div><div class="val" id="m-hum">68</div><div class="unit">%</div></div>
+          <div class="metric"><div class="lbl">Albedo</div><div class="val" id="m-albedo">0.20</div><div class="unit">—</div></div>
+          <div class="metric teal"><div class="lbl">Índice UV</div><div class="val" id="m-uv">8.1</div><div class="unit">—</div></div>
+        </div>
+        <div class="note">Modelo climático NASA/PVGIS según latitud. Para mayor precisión usa el piranómetro.</div>
+      </div>
+      <div class="section">
+        <div class="section-title"><i class="ti ti-calendar"></i> Perfil mensual de irradiancia</div>
+        <div class="chart-wrap" style="height:180px"><canvas id="chartMonthly"></canvas></div>
+      </div>
+    </div>
+
+    <!-- INSTALACIÓN -->
+    <div class="panel" id="panel-instalacion">
+      <div class="section">
+        <div class="section-title"><i class="ti ti-solar-panel"></i> Tipo de sistema</div>
+        <div class="field">
+          <label>Tipo de instalación</label>
+          <select id="sys-type" onchange="calcAll()">
+            <option value="residencial">Residencial — tejado fijo</option>
+            <option value="comercial">Comercial — tejado grande</option>
+            <option value="tracker1">Solar tracker 1 eje (+20%)</option>
+            <option value="tracker2">Solar tracker 2 ejes (+35%)</option>
+            <option value="flotante">Flotante / agrivoltaico</option>
+            <option value="bifacial">Bifacial + albedo (+10%)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Tecnología de panel</label>
+          <select id="panel-tech" onchange="calcAll()">
+            <option value="mono">Monocristalino estándar η~21%</option>
+            <option value="mono-perc">Mono PERC η~22.5%</option>
+            <option value="topcon">TOPCon η~23.5%</option>
+            <option value="hjt">Heterojunction HJT η~24%</option>
+            <option value="poly">Policristalino η~18%</option>
+            <option value="thin">Capa delgada CdTe η~16%</option>
+          </select>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title"><i class="ti ti-adjustments"></i> Parámetros</div>
+        <div class="slider-block"><label>Potencia pico <span id="kwp-v">10 kWp</span></label><input type="range" id="kwp" min="1" max="500" value="10" step="1" oninput="syncSlider('kwp','kwp-v',' kWp',0)"></div>
+        <div class="slider-block"><label>Inclinación del panel <span id="tilt-v">15°</span></label><input type="range" id="tilt" min="0" max="60" value="15" step="1" oninput="syncSlider('tilt','tilt-v','°',0)"></div>
+        <div class="slider-block"><label>Azimut (180°=Sur) <span id="az-v">180°</span></label><input type="range" id="azimuth" min="0" max="360" value="180" step="5" oninput="syncSlider('azimuth','az-v','°',0)"></div>
+        <div class="slider-block"><label>Eficiencia inversor <span id="ie-v">97%</span></label><input type="range" id="inv-eff" min="90" max="99" value="97" step="0.5" oninput="syncSlider('inv-eff','ie-v','%',1)"></div>
+        <div class="slider-block"><label>Pérdidas cableado <span id="cl-v">2.0%</span></label><input type="range" id="cable-loss" min="0" max="5" value="2" step="0.1" oninput="syncSlider('cable-loss','cl-v','%',1)"></div>
+        <div class="slider-block"><label>Degradación anual <span id="dg-v">0.5%/año</span></label><input type="range" id="degradation" min="0.2" max="1.0" value="0.5" step="0.1" oninput="syncSlider('degradation','dg-v','%/año',1)"></div>
+      </div>
+      <div class="section">
+        <div class="section-title"><i class="ti ti-temperature"></i> Temperatura de celda</div>
+        <div class="slider-block"><label>Coef. temperatura <span id="tc-v">-0.35%/°C</span></label><input type="range" id="temp-coef" min="-50" max="-20" value="-35" step="1" oninput="syncTempCoef()"></div>
+        <div class="slider-block"><label>NOCT <span id="nc-v">45°C</span></label><input type="range" id="noct" min="40" max="50" value="45" step="1" oninput="syncSlider('noct','nc-v','°C',0)"></div>
+      </div>
+      <button class="btn-primary" onclick="calcAll(); switchTab('resultados')">Calcular generación →</button>
+    </div>
+
+    <!-- PIRANÓMETRO -->
+    <div class="panel" id="panel-piranometro">
+      <div class="section">
+        <div class="section-title"><i class="ti ti-device-analytics"></i> Lectura de piranómetro</div>
+        <div class="field"><label>Irradiancia medida (W/m²)</label><input type="number" id="pyr-now" value="750" min="0" max="1500" step="1" inputmode="numeric" oninput="calcPyr()"></div>
+        <div class="field-row">
+          <div class="field"><label>Hora</label><input type="time" id="pyr-time" value="12:00" oninput="calcPyr()"></div>
+          <div class="field"><label>Mes</label>
+            <select id="pyr-month" oninput="calcPyr()">
+              <option value="0">Enero</option><option value="1">Febrero</option><option value="2">Marzo</option>
+              <option value="3">Abril</option><option value="4">Mayo</option><option value="5" selected>Junio</option>
+              <option value="6">Julio</option><option value="7">Agosto</option><option value="8">Septiembre</option>
+              <option value="9">Octubre</option><option value="10">Noviembre</option><option value="11">Diciembre</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row3">
+          <div class="field"><label>GHI día</label><input type="number" id="pyr-day" value="5.4" step="0.1" inputmode="decimal" oninput="calcPyr()"></div>
+          <div class="field"><label>T amb (°C)</label><input type="number" id="pyr-temp" value="25" step="0.5" inputmode="decimal" oninput="calcPyr()"></div>
+          <div class="field"><label>Viento m/s</label><input type="number" id="pyr-wind" value="3" step="0.1" inputmode="decimal" oninput="calcPyr()"></div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title"><i class="ti ti-chart-line"></i> Diagnóstico en tiempo real</div>
+        <div class="metric-grid" style="margin-bottom:12px">
+          <div class="metric accent"><div class="lbl">Potencia ahora</div><div class="val" id="pyr-pow">—</div><div class="unit">kW</div></div>
+          <div class="metric"><div class="lbl">Energía hoy est.</div><div class="val" id="pyr-daily">—</div><div class="unit">kWh</div></div>
+          <div class="metric"><div class="lbl">T celda</div><div class="val" id="pyr-tcell">—</div><div class="unit">°C</div></div>
+          <div class="metric"><div class="lbl">Pérd. térmica</div><div class="val" id="pyr-tloss">—</div><div class="unit">%</div></div>
+        </div>
+        <div class="row-info"><span class="k">Generación teórica hoy</span><span class="v" id="pyr-teor">—</span></div>
+        <div class="row-info"><span class="k">Con piranómetro</span><span class="v" id="pyr-real">—</span></div>
+        <div class="row-info"><span class="k">Performance Ratio</span><span class="v" id="pyr-pr">—</span></div>
+        <div class="pr-bar"><div class="pr-fill" id="pr-fill" style="width:0%"></div></div>
+        <div class="status-row"><div class="dot dot-g" id="st-dot"></div><span id="pyr-badge"></span></div>
+        <div class="note" id="pyr-note">Ingresa la lectura del piranómetro para el diagnóstico.</div>
+      </div>
+      <div class="section">
+        <div class="section-title"><i class="ti ti-history"></i> Registro de lecturas</div>
+        <div class="field-row" style="margin-bottom:8px">
+          <button class="btn-sec" style="margin-bottom:0" onclick="addReading()"><i class="ti ti-plus"></i> Agregar</button>
+          <button class="btn-sec" style="margin-bottom:0" onclick="clearReadings()"><i class="ti ti-trash"></i> Limpiar</button>
+        </div>
+        <div id="readings-wrap"><p style="font-size:13px;color:var(--text-ter)">Sin lecturas registradas.</p></div>
+      </div>
+    </div>
+
+    <!-- RESULTADOS -->
+    <div class="panel" id="panel-resultados">
+      <div class="section">
+        <div class="section-title"><i class="ti ti-bolt"></i> Generación anual</div>
+        <div class="metric-grid">
+          <div class="metric accent"><div class="lbl">Energía anual</div><div class="val" id="r-annual">—</div><div class="unit">MWh/año</div></div>
+          <div class="metric accent"><div class="lbl">Mensual promedio</div><div class="val" id="r-monthly">—</div><div class="unit">kWh/mes</div></div>
+          <div class="metric"><div class="lbl">Horas sol pico</div><div class="val" id="r-hsp">—</div><div class="unit">HSP/día</div></div>
+          <div class="metric"><div class="lbl">Performance Ratio</div><div class="val" id="r-pr">—</div><div class="unit">—</div></div>
+          <div class="metric"><div class="lbl">Factor capacidad</div><div class="val" id="r-cf">—</div><div class="unit">%</div></div>
+          <div class="metric teal"><div class="lbl">CO₂ evitado</div><div class="val" id="r-co2">—</div><div class="unit">ton/año</div></div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title"><i class="ti ti-list"></i> Desglose de pérdidas</div>
+        <div id="losses-detail"></div>
+      </div>
+      <div class="section">
+        <div class="section-title"><i class="ti ti-calendar"></i> Generación mensual (kWh)</div>
+        <div class="chart-wrap" style="height:200px"><canvas id="chartGen"></canvas></div>
+      </div>
+      <div class="section">
+        <div class="section-title"><i class="ti ti-trending-up"></i> Proyección 25 años</div>
+        <div class="chart-wrap" style="height:160px"><canvas id="chartLife"></canvas></div>
+        <div class="metric-grid" style="margin-top:10px">
+          <div class="metric"><div class="lbl">Total 25 años</div><div class="val" id="r-25y">—</div><div class="unit">MWh</div></div>
+          <div class="metric"><div class="lbl">Generación año 25</div><div class="val" id="r-y25">—</div><div class="unit">MWh/año</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+const MO = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+let cMonthly, cGen, cLife;
+let readings = [];
+
+function switchTab(id) {
+  const ids = ['ubicacion','instalacion','piranometro','resultados'];
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ids[i]===id));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  if(id==='resultados') { calcAll(); setTimeout(renderCharts,80); }
+  if(id==='ubicacion') setTimeout(renderMonthlyChart,80);
+}
+
+function syncSlider(id, outId, unit, dec) {
+  const v = parseFloat(document.getElementById(id).value);
+  document.getElementById(outId).textContent = v.toFixed(dec)+unit;
+  calcAll();
+}
+
+function syncTempCoef() {
+  const raw = parseFloat(document.getElementById('temp-coef').value);
+  const v = raw/100;
+  document.getElementById('tc-v').textContent = v.toFixed(2)+'%/°C';
+  calcAll();
+}
+
+function getLocation() {
+  const msg = document.getElementById('loc-msg');
+  msg.textContent = 'Obteniendo ubicación GPS...';
+  if(navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      document.getElementById('lat').value = pos.coords.latitude.toFixed(4);
+      document.getElementById('lon').value = pos.coords.longitude.toFixed(4);
+      msg.textContent = '✓ Lat: '+pos.coords.latitude.toFixed(4)+', Lon: '+pos.coords.longitude.toFixed(4);
+      onLatLonChange();
+    }, () => { msg.textContent = 'No se pudo obtener ubicación. Ingresa manualmente.'; });
+  } else { msg.textContent = 'GPS no disponible en este navegador.'; }
+}
+
+function estimateMeteo(lat) {
+  const a = Math.abs(lat);
+  if(a<15) return {ghi:5.7,temp:27,wind:2.9,hum:72,albedo:0.18,uv:11};
+  if(a<25) return {ghi:5.4,temp:24,wind:3.1,hum:63,albedo:0.20,uv:9};
+  if(a<35) return {ghi:5.0,temp:20,wind:3.6,hum:57,albedo:0.22,uv:7};
+  if(a<50) return {ghi:4.0,temp:13,wind:4.2,hum:66,albedo:0.25,uv:5};
+  return {ghi:2.8,temp:6,wind:5.5,hum:72,albedo:0.30,uv:3};
+}
+
+function getMonthly(lat, ghi) {
+  const isSouth = lat < 0;
+  let b = Math.abs(lat) > 30
+    ? [0.60,0.72,0.90,1.05,1.12,1.18,1.20,1.15,1.05,0.88,0.68,0.55]
+    : [0.85,0.90,1.00,1.05,1.05,1.00,0.98,0.98,1.02,1.02,0.92,0.84];
+  if(isSouth) b = [...b.slice(6),...b.slice(0,6)];
+  const s = b.reduce((a,v)=>a+v,0);
+  return b.map(v => parseFloat((v/s*ghi*12).toFixed(2)));
+}
+
+function onLatLonChange() {
+  const lat = parseFloat(document.getElementById('lat').value)||14.64;
+  const m = estimateMeteo(lat);
+  document.getElementById('m-ghi').textContent = m.ghi.toFixed(1);
+  document.getElementById('m-temp').textContent = m.temp;
+  document.getElementById('m-wind').textContent = m.wind.toFixed(1);
+  document.getElementById('m-hum').textContent = m.hum;
+  document.getElementById('m-albedo').textContent = m.albedo.toFixed(2);
+  document.getElementById('m-uv').textContent = m.uv;
+  renderMonthlyChart();
+  calcAll();
+}
+
+const darkMode = () => window.matchMedia('(prefers-color-scheme:dark)').matches;
+const gridColor = () => darkMode() ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+const textColor = () => darkMode() ? '#aaa' : '#666';
+
+function renderMonthlyChart() {
+  const lat = parseFloat(document.getElementById('lat').value)||14.64;
+  const ghi = parseFloat(document.getElementById('m-ghi').textContent)||5.4;
+  const data = getMonthly(lat, ghi);
+  if(cMonthly) cMonthly.destroy();
+  cMonthly = new Chart(document.getElementById('chartMonthly'), {
+    type:'bar', data:{labels:MO, datasets:[{label:'kWh/m²/día', data, backgroundColor:'#E8A02099', borderColor:'#BA7517', borderWidth:1, borderRadius:4}]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:textColor(),font:{size:10}},grid:{color:gridColor()}},y:{ticks:{color:textColor(),font:{size:10}},grid:{color:gridColor()}}}}
+  });
+}
+
+const PEFF = {mono:0.21,'mono-perc':0.225,topcon:0.235,hjt:0.24,poly:0.18,thin:0.16};
+const SGAIN = {residencial:1.0,comercial:1.0,tracker1:1.20,tracker2:1.35,flotante:1.03,bifacial:1.10};
+
+function calcAll() {
+  const lat = parseFloat(document.getElementById('lat').value)||14.64;
+  const ghi = parseFloat(document.getElementById('m-ghi').textContent)||5.4;
+  const tempAmb = parseFloat(document.getElementById('m-temp').textContent)||22;
+  const kwp = parseFloat(document.getElementById('kwp').value)||10;
+  const tilt = parseFloat(document.getElementById('tilt').value)||15;
+  const azimuth = parseFloat(document.getElementById('azimuth').value)||180;
+  const invEff = parseFloat(document.getElementById('inv-eff').value)/100;
+  const cableLoss = parseFloat(document.getElementById('cable-loss').value)/100;
+  const degradation = parseFloat(document.getElementById('degradation').value)/100;
+  const tempCoef = parseFloat(document.getElementById('temp-coef').value)/10000;
+  const noct = parseFloat(document.getElementById('noct').value)||45;
+  const sysGain = SGAIN[document.getElementById('sys-type').value];
+  const panEff = PEFF[document.getElementById('panel-tech').value];
+  const tiltR = tilt*Math.PI/180;
+  const latR = lat*Math.PI/180;
+  const azGain = 1 - 0.003*Math.abs(azimuth-180);
+  const tiltGain = 1 + 0.005*Math.sin(2*tiltR) + 0.003*Math.sin(latR)*Math.cos(tiltR);
+  const gti = ghi*tiltGain*azGain*sysGain;
+  const tCell = tempAmb + (noct-20)/0.8*(ghi/1000);
+  const tempLoss = 1 + tempCoef*(tCell-25);
+  const pr = invEff*(1-cableLoss)*(tempLoss<0?0:tempLoss)*0.97*0.98*0.99;
+  const hsp = gti;
+  const daily = kwp*hsp*pr;
+  const annual = daily*365;
+  const cf = (daily/(kwp*24))*100;
+  const co2 = annual*0.404/1000;
+  document.getElementById('r-annual').textContent = (annual/1000).toFixed(2);
+  document.getElementById('r-monthly').textContent = Math.round(annual/12);
+  document.getElementById('r-hsp').textContent = hsp.toFixed(2);
+  document.getElementById('r-pr').textContent = pr.toFixed(3);
+  document.getElementById('r-cf').textContent = cf.toFixed(1);
+  document.getElementById('r-co2').textContent = co2.toFixed(1);
+  document.getElementById('losses-detail').innerHTML = [
+    {k:'Panel (η='+Math.round(panEff*100)+'%)', v:(panEff*100).toFixed(1)+'%'},
+    {k:'Inversor', v:(invEff*100).toFixed(1)+'%'},
+    {k:'Cableado', v:((1-cableLoss)*100).toFixed(1)+'%'},
+    {k:'T celda ('+tCell.toFixed(0)+'°C)', v:((tempLoss<0?0:tempLoss)*100).toFixed(1)+'%'},
+    {k:'Suciedad estimada', v:'97.0%'},
+    {k:'Mismatch paneles', v:'98.0%'},
+    {k:'Sombras estimadas', v:'99.0%'},
+    {k:'Ganancia tipo sistema', v:'×'+sysGain.toFixed(2)},
+  ].map(l=>`<div class="row-info"><span class="k">${l.k}</span><span class="v">${l.v}</span></div>`).join('');
+  window._monthly = getMonthly(lat, gti).map(m=>Math.round(kwp*m*pr));
+  window._annual = annual;
+  window._deg = degradation;
+  window._kwp = kwp;
+  const y25 = Array.from({length:25},(_,i)=>parseFloat((annual/1000*Math.pow(1-degradation,i)).toFixed(2)));
+  window._y25 = y25;
+  document.getElementById('r-25y').textContent = y25.reduce((a,b)=>a+b,0).toFixed(0);
+  document.getElementById('r-y25').textContent = y25[24].toFixed(2);
+}
+
+function renderCharts() {
+  calcAll();
+  if(cGen) cGen.destroy();
+  cGen = new Chart(document.getElementById('chartGen'), {
+    type:'bar', data:{labels:MO, datasets:[{label:'kWh/mes', data:window._monthly||[], backgroundColor:'#1D9E7599', borderColor:'#0F6E56', borderWidth:1, borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:textColor(),font:{size:10}},grid:{color:gridColor()}},y:{ticks:{color:textColor(),font:{size:10}},grid:{color:gridColor()}}}}
+  });
+  if(cLife) cLife.destroy();
+  cLife = new Chart(document.getElementById('chartLife'), {
+    type:'line', data:{labels:Array.from({length:25},(_,i)=>'A'+(i+1)), datasets:[{label:'MWh/año', data:window._y25||[], borderColor:'#378ADD', backgroundColor:'#378ADD22', fill:true, tension:0.3, pointRadius:2}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:textColor(),font:{size:9},maxTicksLimit:8},grid:{color:gridColor()}},y:{ticks:{color:textColor(),font:{size:10}},grid:{color:gridColor()}}}}
+  });
+}
+
+function calcPyr() {
+  const G = parseFloat(document.getElementById('pyr-now').value)||0;
+  const ghiDay = parseFloat(document.getElementById('pyr-day').value)||5.4;
+  const tempA = parseFloat(document.getElementById('pyr-temp').value)||25;
+  const wind = parseFloat(document.getElementById('pyr-wind').value)||3;
+  const kwp = parseFloat(document.getElementById('kwp').value)||10;
+  const noct = parseFloat(document.getElementById('noct').value)||45;
+  const tempCoef = parseFloat(document.getElementById('temp-coef').value)/10000;
+  const invEff = parseFloat(document.getElementById('inv-eff').value)/100;
+  const cableLoss = parseFloat(document.getElementById('cable-loss').value)/100;
+  const tCell = tempA + (noct-20)/0.8*(G/1000) - 1.5*wind;
+  const tempLoss = 1 + tempCoef*(tCell-25);
+  const prNow = invEff*(1-cableLoss)*(tempLoss<0?0:tempLoss)*0.97*0.98*0.99;
+  const pow = kwp*(G/1000)*prNow;
+  const dailyR = kwp*ghiDay*prNow;
+  const prBase = invEff*(1-cableLoss)*0.97*0.98*0.99;
+  const dailyT = kwp*ghiDay*prBase;
+  const prR = dailyR/dailyT;
+  document.getElementById('pyr-pow').textContent = pow.toFixed(2);
+  document.getElementById('pyr-daily').textContent = dailyR.toFixed(2);
+  document.getElementById('pyr-tcell').textContent = tCell.toFixed(1);
+  document.getElementById('pyr-tloss').textContent = Math.abs(((1-tempLoss)*100)).toFixed(1);
+  document.getElementById('pyr-teor').textContent = dailyT.toFixed(2)+' kWh';
+  document.getElementById('pyr-real').textContent = dailyR.toFixed(2)+' kWh';
+  document.getElementById('pyr-pr').textContent = prR.toFixed(3);
+  document.getElementById('pr-fill').style.width = Math.min(100,prR*100)+'%';
+  const dot = document.getElementById('st-dot');
+  const badge = document.getElementById('pyr-badge');
+  const note = document.getElementById('pyr-note');
+  if(prR>=0.82){ dot.className='dot dot-g'; badge.innerHTML='<span class="badge ok">Excelente ≥82%</span>'; note.textContent='Sistema funcionando óptimamente.'; }
+  else if(prR>=0.75){ dot.className='dot dot-a'; badge.innerHTML='<span class="badge warn">Normal 75–82%</span>'; note.textContent='Rendimiento típico. Revisar limpieza y temperatura.'; }
+  else { dot.className='dot dot-r'; badge.innerHTML='<span class="badge err">Bajo <75%</span>'; note.textContent='PR bajo. Revisar sombras, suciedad, temperatura o fallo de módulos/inversor.'; }
+}
+
+function addReading() {
+  const G = parseFloat(document.getElementById('pyr-now').value)||0;
+  const t = document.getElementById('pyr-time').value;
+  const m = MO[parseInt(document.getElementById('pyr-month').value)];
+  const pow = parseFloat(document.getElementById('pyr-pow').textContent)||0;
+  readings.push({G,t,m,pow});
+  renderReadings();
+}
+function clearReadings(){ readings=[]; renderReadings(); }
+function renderReadings(){
+  const el = document.getElementById('readings-wrap');
+  if(!readings.length){el.innerHTML='<p style="font-size:13px;color:var(--text-ter)">Sin lecturas registradas.</p>';return;}
+  let h='<table class="log"><thead><tr><th>Hora</th><th>Mes</th><th>G W/m²</th><th>P kW</th></tr></thead><tbody>';
+  readings.slice(-10).reverse().forEach(r=>{h+=`<tr><td>${r.t}</td><td>${r.m}</td><td>${r.G}</td><td>${r.pow.toFixed(2)}</td></tr>`;});
+  el.innerHTML=h+'</tbody></table>';
+}
+
+onLatLonChange();
+calcPyr();
+setTimeout(renderMonthlyChart,300);
+</script>
+</body>
+</html>
