@@ -58,6 +58,9 @@
   .field select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
   .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .field-row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .input-unit { position: relative; }
+  .input-unit input { padding-right: 48px; }
+  .input-unit .unit-label { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; color: var(--text-ter); pointer-events: none; }
   .slider-block { margin-bottom: 14px; }
   .slider-block label { font-size: 13px; color: var(--text-sec); display: flex; justify-content: space-between; margin-bottom: 6px; }
   .slider-block label span { font-weight: 600; color: var(--text); }
@@ -66,13 +69,14 @@
   .btn-primary { width: 100%; padding: 14px; background: var(--amber-mid); color: #fff; border: none; border-radius: var(--radius-lg); font-size: 15px; font-weight: 600; cursor: pointer; }
   .btn-sec { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 11px; font-size: 14px; border: 0.5px solid var(--border-sec); border-radius: var(--radius); background: transparent; cursor: pointer; color: var(--text-sec); margin-bottom: 10px; }
   .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .metric-grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
   .metric { background: var(--bg-sec); border-radius: var(--radius); padding: 12px; }
   .metric.accent { background: var(--amber-fill); }
   .metric.teal { background: var(--teal-fill); }
   .metric .lbl { font-size: 11px; color: var(--text-ter); margin-bottom: 3px; }
   .metric.accent .lbl { color: var(--amber-mid); }
   .metric.teal .lbl { color: var(--teal-text); }
-  .metric .val { font-size: 22px; font-weight: 600; color: var(--text); }
+  .metric .val { font-size: 20px; font-weight: 600; color: var(--text); }
   .metric.accent .val { color: var(--amber-text); }
   .metric.teal .val { color: var(--teal-text); }
   .metric .unit { font-size: 11px; color: var(--text-ter); }
@@ -98,6 +102,7 @@
   table.log td { padding: 6px 4px; border-bottom: 0.5px solid var(--border); color: var(--text); }
   table.log tr:last-child td { border-bottom: none; }
   #loc-msg { font-size: 12px; color: var(--text-sec); margin-top: 6px; }
+  .divider-label { font-size: 11px; font-weight: 600; color: var(--text-ter); text-transform: uppercase; letter-spacing: 0.06em; margin: 14px 0 8px; }
 </style>
 </head>
 <body>
@@ -145,7 +150,7 @@
         <div class="note">Modelo climático NASA/PVGIS según latitud. Para mayor precisión usa el piranómetro.</div>
       </div>
       <div class="section">
-        <div class="section-title"><i class="ti ti-calendar"></i> Perfil mensual de irradiancia</div>
+        <div class="section-title"><i class="ti ti-calendar"></i> Irradiancia mensual (kWh/m²/mes)</div>
         <div class="chart-wrap" style="height:180px"><canvas id="chartMonthly"></canvas></div>
       </div>
     </div>
@@ -156,40 +161,134 @@
         <div class="section-title"><i class="ti ti-solar-panel"></i> Tipo de sistema</div>
         <div class="field">
           <label>Tipo de instalación</label>
-          <select id="sys-type" onchange="calcAll()">
-            <option value="residencial">Residencial — tejado fijo</option>
-            <option value="comercial">Comercial — tejado grande</option>
+          <select id="sys-type" onchange="onSysTypeChange()">
+            <option value="residencial">Residencial — tejado fijo (sin bifacial)</option>
+            <option value="comercial">Comercial — tejado grande (sin bifacial)</option>
             <option value="tracker1">Solar tracker 1 eje (+20%)</option>
             <option value="tracker2">Solar tracker 2 ejes (+35%)</option>
             <option value="flotante">Flotante / agrivoltaico</option>
-            <option value="bifacial">Bifacial + albedo (+10%)</option>
+            <option value="bifacial">Bifacial — suelo / cubierta elevada</option>
+            <option value="utility">Utility scale bifacial</option>
           </select>
         </div>
         <div class="field">
           <label>Tecnología de panel</label>
-          <select id="panel-tech" onchange="calcAll()">
-            <option value="mono">Monocristalino estándar η~21%</option>
-            <option value="mono-perc">Mono PERC η~22.5%</option>
-            <option value="topcon">TOPCon η~23.5%</option>
-            <option value="hjt">Heterojunction HJT η~24%</option>
-            <option value="poly">Policristalino η~18%</option>
-            <option value="thin">Capa delgada CdTe η~16%</option>
+          <select id="panel-tech" onchange="onPanelTechChange()">
+            <option value="mono">Mono estándar — η~21%, γ=-0.38%/°C</option>
+            <option value="mono-perc">Mono PERC — η~22.5%, γ=-0.35%/°C</option>
+            <option value="trina-vertex">Trina Vertex 650W — η~20.9%, γ=-0.34%/°C ★</option>
+            <option value="topcon">TOPCon N-type — η~23.5%, γ=-0.30%/°C</option>
+            <option value="hjt">HJT Heterojunction — η~24%, γ=-0.25%/°C</option>
+            <option value="poly">Policristalino — η~18%, γ=-0.42%/°C</option>
+            <option value="thin">CdTe thin film — η~19%, γ=-0.32%/°C</option>
           </select>
         </div>
+        <div id="sys-type-note" class="note" style="margin-top:4px;display:none"></div>
+        <div id="panel-tech-note" class="note" style="margin-top:4px;display:none"></div>
+        <!-- Bifacial fields -->
+        <div id="bifacial-fields" style="display:none">
+          <div class="divider-label">Parámetros bifacial</div>
+          <div class="field-row">
+            <div class="field"><label>Pitch entre filas (m)</label><input type="number" id="b-pitch" value="3.5" step="0.1" inputmode="decimal" oninput="calcAll()"></div>
+            <div class="field"><label>Altura inferior mesa (m)</label><input type="number" id="b-height" value="0.6" step="0.1" inputmode="decimal" oninput="calcAll()"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Ancho panel/mesa (m)</label><input type="number" id="b-width" value="1.3" step="0.05" inputmode="decimal" oninput="calcAll()"></div>
+            <div class="field"><label>Bifacialidad panel (%)</label><input type="number" id="b-bifaciality" value="70" step="1" inputmode="numeric" oninput="calcAll()"></div>
+          </div>
+          <div id="bifacial-note" class="note">Ganancia bifacial calculada según pitch, altura y albedo. Máx. +2% sobre producción sin bifacialidad.</div>
+        </div>
+        <!-- Utility scale extra fields -->
+        <div id="utility-fields" style="display:none">
+          <div class="divider-label">Parámetros utility scale bifacial</div>
+          <div class="field-row">
+            <div class="field"><label>Ancho mesa (m)</label><input type="number" id="u-width" value="2.0" step="0.1" inputmode="decimal" oninput="calcAll()"></div>
+            <div class="field"><label>Pitch entre filas (m)</label><input type="number" id="u-pitch" value="4.5" step="0.1" inputmode="decimal" oninput="calcAll()"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Altura inferior mesa (m)</label><input type="number" id="u-height" value="0.8" step="0.1" inputmode="decimal" oninput="calcAll()"></div>
+            <div class="field"><label>Bifacialidad panel (%)</label><input type="number" id="u-bifaciality" value="70" step="1" inputmode="numeric" oninput="calcAll()"></div>
+          </div>
+          <div id="utility-note" class="note">GCR, sombra entre filas y ganancia bifacial calculados automáticamente.</div>
+        </div>
       </div>
+
       <div class="section">
-        <div class="section-title"><i class="ti ti-adjustments"></i> Parámetros</div>
-        <div class="slider-block"><label>Potencia pico <span id="kwp-v">10 kWp</span></label><input type="range" id="kwp" min="1" max="500" value="10" step="1" oninput="syncSlider('kwp','kwp-v',' kWp',0)"></div>
-        <div class="slider-block"><label>Inclinación del panel <span id="tilt-v">15°</span></label><input type="range" id="tilt" min="0" max="60" value="15" step="1" oninput="syncSlider('tilt','tilt-v','°',0)"></div>
-        <div class="slider-block"><label>Azimut (180°=Sur) <span id="az-v">180°</span></label><input type="range" id="azimuth" min="0" max="360" value="180" step="5" oninput="syncSlider('azimuth','az-v','°',0)"></div>
-        <div class="slider-block"><label>Eficiencia inversor <span id="ie-v">97%</span></label><input type="range" id="inv-eff" min="90" max="99" value="97" step="0.5" oninput="syncSlider('inv-eff','ie-v','%',1)"></div>
-        <div class="slider-block"><label>Pérdidas cableado <span id="cl-v">2.0%</span></label><input type="range" id="cable-loss" min="0" max="5" value="2" step="0.1" oninput="syncSlider('cable-loss','cl-v','%',1)"></div>
-        <div class="slider-block"><label>Degradación anual <span id="dg-v">0.5%/año</span></label><input type="range" id="degradation" min="0.2" max="1.0" value="0.5" step="0.1" oninput="syncSlider('degradation','dg-v','%/año',1)"></div>
+        <div class="section-title"><i class="ti ti-adjustments"></i> Parámetros del sistema</div>
+
+        <div class="field">
+          <label>Potencia pico instalada</label>
+          <div class="input-unit">
+            <input type="number" id="kwp" value="10" step="0.1" min="0.1" max="100000" inputmode="decimal" oninput="calcAll()">
+            <span class="unit-label">kWp</span>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Inclinación panel</label>
+            <div class="input-unit">
+              <input type="number" id="tilt" value="15" step="1" min="0" max="60" inputmode="numeric" oninput="calcAll()">
+              <span class="unit-label">°</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Azimut (180°=Sur)</label>
+            <div class="input-unit">
+              <input type="number" id="azimuth" value="180" step="1" min="0" max="360" inputmode="numeric" oninput="calcAll()">
+              <span class="unit-label">°</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Efic. inversor</label>
+            <div class="input-unit">
+              <input type="number" id="inv-eff" value="97" step="0.1" min="85" max="99.9" inputmode="decimal" oninput="calcAll()">
+              <span class="unit-label">%</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Pérd. cableado</label>
+            <div class="input-unit">
+              <input type="number" id="cable-loss" value="2.0" step="0.1" min="0" max="10" inputmode="decimal" oninput="calcAll()">
+              <span class="unit-label">%</span>
+            </div>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Suciedad (soiling)</label>
+            <div class="input-unit">
+              <input type="number" id="soiling" value="3.0" step="0.5" min="0" max="20" inputmode="decimal" oninput="calcAll()">
+              <span class="unit-label">%</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Indisponibilidad</label>
+            <div class="input-unit">
+              <input type="number" id="unavail" value="2.0" step="0.1" min="0" max="20" inputmode="decimal" oninput="calcAll()">
+              <span class="unit-label">%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Degradación anual</label>
+          <div class="input-unit">
+            <input type="number" id="degradation" value="0.5" step="0.1" min="0.1" max="2.0" inputmode="decimal" oninput="calcAll()">
+            <span class="unit-label">%/año</span>
+          </div>
+        </div>
+        <div class="note" style="margin-top:4px">Suciedad típica: 2-3% zonas húmedas, 5-8% zonas áridas. Indisponibilidad: tiempo fuera de servicio por mantenimiento o averías.</div>
       </div>
+
       <div class="section">
         <div class="section-title"><i class="ti ti-temperature"></i> Temperatura de celda</div>
         <div class="slider-block"><label>Coef. temperatura <span id="tc-v">-0.35%/°C</span></label><input type="range" id="temp-coef" min="-50" max="-20" value="-35" step="1" oninput="syncTempCoef()"></div>
         <div class="slider-block"><label>NOCT <span id="nc-v">45°C</span></label><input type="range" id="noct" min="40" max="50" value="45" step="1" oninput="syncSlider('noct','nc-v','°C',0)"></div>
+        <div class="note">T_celda = T_amb + (NOCT − 20) / 800 × G (W/m²). Con G=1000 W/m² y NOCT=45°C: T_celda ≈ T_amb + 31°C. Esto genera una pérdida térmica realista del ~8–12%.</div>
       </div>
       <button class="btn-primary" onclick="calcAll(); switchTab('resultados')">Calcular generación →</button>
     </div>
@@ -245,11 +344,16 @@
     <div class="panel" id="panel-resultados">
       <div class="section">
         <div class="section-title"><i class="ti ti-bolt"></i> Generación anual</div>
-        <div class="metric-grid">
+        <div class="metric-grid" style="margin-bottom:10px">
           <div class="metric accent"><div class="lbl">Energía anual</div><div class="val" id="r-annual">—</div><div class="unit">MWh/año</div></div>
           <div class="metric accent"><div class="lbl">Mensual promedio</div><div class="val" id="r-monthly">—</div><div class="unit">kWh/mes</div></div>
-          <div class="metric"><div class="lbl">Horas sol pico</div><div class="val" id="r-hsp">—</div><div class="unit">HSP/día</div></div>
-          <div class="metric"><div class="lbl">Performance Ratio</div><div class="val" id="r-pr">—</div><div class="unit">—</div></div>
+        </div>
+        <div class="metric-grid3">
+          <div class="metric"><div class="lbl">kWh/kWp</div><div class="val" id="r-yield">—</div><div class="unit">kWh/kWp·año</div></div>
+          <div class="metric"><div class="lbl">HSP/día</div><div class="val" id="r-hsp">—</div><div class="unit">h/día</div></div>
+          <div class="metric"><div class="lbl">Perf. Ratio</div><div class="val" id="r-pr">—</div><div class="unit">—</div></div>
+        </div>
+        <div class="metric-grid" style="margin-top:10px">
           <div class="metric"><div class="lbl">Factor capacidad</div><div class="val" id="r-cf">—</div><div class="unit">%</div></div>
           <div class="metric teal"><div class="lbl">CO₂ evitado</div><div class="val" id="r-co2">—</div><div class="unit">ton/año</div></div>
         </div>
@@ -269,6 +373,33 @@
           <div class="metric"><div class="lbl">Total 25 años</div><div class="val" id="r-25y">—</div><div class="unit">MWh</div></div>
           <div class="metric"><div class="lbl">Generación año 25</div><div class="val" id="r-y25">—</div><div class="unit">MWh/año</div></div>
         </div>
+      </div>
+      <!-- REPORT SECTION -->
+      <div class="section">
+        <div class="section-title"><i class="ti ti-send"></i> Generar reporte cliente</div>
+        <div class="field">
+          <label>Nombre del cliente / proyecto</label>
+          <input type="text" id="rpt-client" placeholder="Ej: Supermercados García S.A." style="width:100%;font-size:15px;padding:10px 12px;border:0.5px solid var(--border-sec);border-radius:var(--radius);background:var(--bg-sec);color:var(--text);">
+        </div>
+        <div class="field">
+          <label>Ubicación del proyecto</label>
+          <input type="text" id="rpt-location" placeholder="Ej: Nave industrial, Km 15 Carretera al Pacífico" style="width:100%;font-size:15px;padding:10px 12px;border:0.5px solid var(--border-sec);border-radius:var(--radius);background:var(--bg-sec);color:var(--text);">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>De (remitente)</label>
+            <select id="rpt-from" style="width:100%;font-size:14px;padding:10px 12px;border:0.5px solid var(--border-sec);border-radius:var(--radius);background:var(--bg-sec);color:var(--text);-webkit-appearance:none;">
+              <option value="francesc@generasl.com">Francesc</option>
+              <option value="albert@generasl.com">Albert</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Para (cliente)</label>
+            <input type="email" id="rpt-to" placeholder="cliente@empresa.com" style="width:100%;font-size:15px;padding:10px 12px;border:0.5px solid var(--border-sec);border-radius:var(--radius);background:var(--bg-sec);color:var(--text);">
+          </div>
+        </div>
+        <button class="btn-primary" style="margin-bottom:10px" onclick="generatePDF()"><i class="ti ti-file-type-pdf"></i> Generar PDF del reporte</button>
+        <button class="btn-primary" onclick="openOutlook()" style="margin-top:0;background:#0F6E56"><i class="ti ti-mail-forward"></i> Abrir en Outlook</button>
       </div>
     </div>
 
@@ -303,6 +434,42 @@ function syncTempCoef() {
   calcAll();
 }
 
+function onPanelTechChange() {
+  const tech = document.getElementById('panel-tech').value;
+  // Auto-set NOCT and temp coef sliders
+  const noct = NOCT_DEF[tech]||45;
+  document.getElementById('noct').value = noct;
+  document.getElementById('nc-v').textContent = noct+'°C';
+  const tc = TEMPCOEF[tech]||-0.0035;
+  document.getElementById('temp-coef').value = Math.round(tc*10000);
+  document.getElementById('tc-v').textContent = (tc*100).toFixed(2)+'%/°C';
+  // Auto-set degradation
+  const dg = DEGR_DEF[tech]||0.5;
+  document.getElementById('degradation').value = dg;
+  // Show note
+  const noteEl = document.getElementById('panel-tech-note');
+  noteEl.style.display = 'block';
+  noteEl.textContent = PANEL_NOTES[tech]||'';
+  calcAll();
+}
+
+function onSysTypeChange() {
+  const v = document.getElementById('sys-type').value;
+  document.getElementById('utility-fields').style.display = v==='utility' ? 'block' : 'none';
+  document.getElementById('bifacial-fields').style.display = v==='bifacial' ? 'block' : 'none';
+  const noteEl = document.getElementById('sys-type-note');
+  if(v==='residencial'||v==='comercial') {
+    noteEl.style.display='block';
+    noteEl.textContent='Tejado coplanar: la ganancia bifacial no aplica. El panel trasero no recibe irradiancia reflejada significativa.';
+  } else if(v==='bifacial') {
+    noteEl.style.display='block';
+    noteEl.textContent='Instalación elevada sobre suelo o cubierta con espacio trasero. La ganancia bifacial se calcula según pitch, altura y albedo (máx. +2%).';
+  } else {
+    noteEl.style.display='none';
+  }
+  calcAll();
+}
+
 function getLocation() {
   const msg = document.getElementById('loc-msg');
   msg.textContent = 'Obteniendo ubicación GPS...';
@@ -332,7 +499,8 @@ function getMonthly(lat, ghi) {
     : [0.85,0.90,1.00,1.05,1.05,1.00,0.98,0.98,1.02,1.02,0.92,0.84];
   if(isSouth) b = [...b.slice(6),...b.slice(0,6)];
   const s = b.reduce((a,v)=>a+v,0);
-  return b.map(v => parseFloat((v/s*ghi*12).toFixed(2)));
+  // Returns monthly values in kWh/m²/MONTH (not day)
+  return b.map(v => parseFloat((v/s*ghi*365).toFixed(1)));
 }
 
 function onLatLonChange() {
@@ -355,17 +523,90 @@ const textColor = () => darkMode() ? '#aaa' : '#666';
 function renderMonthlyChart() {
   const lat = parseFloat(document.getElementById('lat').value)||14.64;
   const ghi = parseFloat(document.getElementById('m-ghi').textContent)||5.4;
-  const data = getMonthly(lat, ghi);
+  const data = getMonthly(lat, ghi); // kWh/m²/mes
   if(cMonthly) cMonthly.destroy();
   cMonthly = new Chart(document.getElementById('chartMonthly'), {
-    type:'bar', data:{labels:MO, datasets:[{label:'kWh/m²/día', data, backgroundColor:'#E8A02099', borderColor:'#BA7517', borderWidth:1, borderRadius:4}]},
+    type:'bar',
+    data:{labels:MO, datasets:[{label:'kWh/m²/mes', data, backgroundColor:'#E8A02099', borderColor:'#BA7517', borderWidth:1, borderRadius:4}]},
     options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
-      scales:{x:{ticks:{color:textColor(),font:{size:10}},grid:{color:gridColor()}},y:{ticks:{color:textColor(),font:{size:10}},grid:{color:gridColor()}}}}
+      scales:{x:{ticks:{color:textColor(),font:{size:10}},grid:{color:gridColor()}},
+              y:{ticks:{color:textColor(),font:{size:10}},grid:{color:gridColor()},title:{display:true,text:'kWh/m²/mes',color:textColor(),font:{size:10}}}}}
   });
 }
 
-const PEFF = {mono:0.21,'mono-perc':0.225,topcon:0.235,hjt:0.24,poly:0.18,thin:0.16};
-const SGAIN = {residencial:1.0,comercial:1.0,tracker1:1.20,tracker2:1.35,flotante:1.03,bifacial:1.10};
+const PEFF = {mono:0.21,'mono-perc':0.225,'trina-vertex':0.209,topcon:0.235,hjt:0.24,poly:0.18,thin:0.19};
+const TEMPCOEF = {mono:-0.0038,'mono-perc':-0.0035,'trina-vertex':-0.0034,topcon:-0.0030,hjt:-0.0025,poly:-0.0042,thin:-0.0032};
+const NOCT_DEF = {mono:45,'mono-perc':44,'trina-vertex':43,topcon:43,hjt:42,poly:46,thin:44};
+const DEGR_DEF = {mono:0.5,'mono-perc':0.5,'trina-vertex':0.45,topcon:0.4,hjt:0.35,poly:0.6,thin:0.5};
+const PANEL_NOTES = {
+  mono:'Monocristalino P-type estándar. Tecnología madura, relación calidad-precio probada.',
+  'mono-perc':'PERC P-type. Mejora respecto mono estándar especialmente en baja irradiancia.',
+  'trina-vertex':'Trina Solar Vertex TSM-DEG21C.20 650W. Datos reales datasheet 2022: γ=-0.34%/°C, NOCT=43°C, bifacial 70%, degradación 2% año 1 luego 0.45%/año. Certificado IEC61215/61730.',
+  topcon:'TOPCon N-type. Mejor coef. temperatura que PERC, sin LID, degradación <0.4%/año.',
+  hjt:'HJT Heterojunction. Mejor coef. temperatura del mercado, ideal para climas cálidos.',
+  poly:'Policristalino P-type. Tecnología en declive, peor coef. temperatura.',
+  thin:'CdTe thin film (First Solar). Buen comportamiento en alta temperatura y baja irradiancia.'
+};
+// Base system gains (utility calculated separately)
+const SGAIN = {residencial:1.0,comercial:1.0,tracker1:1.20,tracker2:1.35,flotante:1.03,bifacial:1.0,utility:1.0}; // bifacial and utility computed dynamically
+
+// ── Bifacial rear gain model (IEC 60904-1-2 simplified) ──
+// Rear irradiance depends on:
+//   - View factor from panel rear to ground = f(height, pitch, panel_width)
+//   - Ground reflected irradiance = albedo × GHI
+//   - Bifaciality of the panel
+// Net production gain is capped at 2% per spec
+function calcViewFactor(height, pitch, width) {
+  // Simplified sky view factor for tilted surface rear to ground strip
+  // Based on geometric view factor: VF ≈ (height / (height + pitch/2)) × correction
+  const d = pitch - width; // gap between rows
+  const vf = height / Math.sqrt(height*height + (d/2)*(d/2));
+  return Math.min(vf, 0.95);
+}
+
+function calcBifacialGain(pitchId, heightId, widthId, bifacialityId) {
+  const pitch = parseFloat(document.getElementById(pitchId).value)||3.5;
+  const height = parseFloat(document.getElementById(heightId).value)||0.6;
+  const width = parseFloat(document.getElementById(widthId).value)||1.3;
+  const bifaciality = (parseFloat(document.getElementById(bifacialityId).value)||70)/100;
+  const albedo = parseFloat(document.getElementById('m-albedo').textContent)||0.20;
+  // View factor rear panel → ground
+  const vf = calcViewFactor(height, pitch, width);
+  // Rear irradiance fraction = albedo × vf
+  const rearFrac = albedo * vf;
+  // Raw bifacial gain = bifaciality × rearFrac (as fraction of front irradiance)
+  const rawGain = bifaciality * rearFrac;
+  // Cap at 2% net production gain
+  return Math.min(rawGain, 0.02);
+}
+
+function calcUtilityGain() {
+  const w = parseFloat(document.getElementById('u-width').value)||2.0;
+  const pitch = parseFloat(document.getElementById('u-pitch').value)||4.5;
+  const gcr = w/pitch;
+  // Inter-row shading loss: function of GCR and tilt
+  const tilt = parseFloat(document.getElementById('tilt').value)||15;
+  const tiltR = tilt * Math.PI/180;
+  const shadingLoss = Math.min(gcr * Math.sin(tiltR) * 0.5, 0.15);
+  // Bifacial gain using same model, capped at 2%
+  const bifGain = calcBifacialGain('u-pitch','u-height','u-width','u-bifaciality');
+  // Update note
+  const noteEl = document.getElementById('utility-note');
+  if(noteEl) noteEl.textContent = 'GCR=' + (gcr*100).toFixed(0) + '% · Pérd.sombra=' + (shadingLoss*100).toFixed(1) + '% · Ganancia bifacial=' + (bifGain*100).toFixed(2) + '%';
+  return (1 - shadingLoss) * (1 + bifGain);
+}
+
+function calcBifacialStandaloneGain() {
+  const gain = calcBifacialGain('b-pitch','b-height','b-width','b-bifaciality');
+  const noteEl = document.getElementById('bifacial-note');
+  const albedo = parseFloat(document.getElementById('m-albedo').textContent)||0.20;
+  const pitch = parseFloat(document.getElementById('b-pitch').value)||3.5;
+  const height = parseFloat(document.getElementById('b-height').value)||0.6;
+  const width = parseFloat(document.getElementById('b-width').value)||1.3;
+  const vf = calcViewFactor(height, pitch, width);
+  if(noteEl) noteEl.textContent = 'VF=' + (vf*100).toFixed(0) + '% · Albedo=' + albedo + ' · Ganancia bifacial neta=' + (gain*100).toFixed(2) + '% (máx. 2%)';
+  return gain;
+}
 
 function calcAll() {
   const lat = parseFloat(document.getElementById('lat').value)||14.64;
@@ -377,40 +618,79 @@ function calcAll() {
   const invEff = parseFloat(document.getElementById('inv-eff').value)/100;
   const cableLoss = parseFloat(document.getElementById('cable-loss').value)/100;
   const degradation = parseFloat(document.getElementById('degradation').value)/100;
+  const unavail = parseFloat(document.getElementById('unavail').value)/100;
   const tempCoef = parseFloat(document.getElementById('temp-coef').value)/10000;
   const noct = parseFloat(document.getElementById('noct').value)||45;
-  const sysGain = SGAIN[document.getElementById('sys-type').value];
+  const sysType = document.getElementById('sys-type').value;
+  let sysGain;
+  let bifGainPct = 0;
+  const noRoofBifacial = ['residencial','comercial','tracker1','tracker2','flotante'];
+  if(sysType==='utility') {
+    sysGain = calcUtilityGain();
+  } else if(sysType==='bifacial') {
+    bifGainPct = calcBifacialStandaloneGain();
+    sysGain = 1.0 + bifGainPct;
+  } else {
+    // Roof/tracker: no bifacial gain regardless of panel type
+    sysGain = SGAIN[sysType];
+    bifGainPct = 0;
+  }
   const panEff = PEFF[document.getElementById('panel-tech').value];
   const tiltR = tilt*Math.PI/180;
   const latR = lat*Math.PI/180;
   const azGain = 1 - 0.003*Math.abs(azimuth-180);
   const tiltGain = 1 + 0.005*Math.sin(2*tiltR) + 0.003*Math.sin(latR)*Math.cos(tiltR);
   const gti = ghi*tiltGain*azGain*sysGain;
-  const tCell = tempAmb + (noct-20)/0.8*(ghi/1000);
-  const tempLoss = 1 + tempCoef*(tCell-25);
-  const pr = invEff*(1-cableLoss)*(tempLoss<0?0:tempLoss)*0.97*0.98*0.99;
+
+  // Correct cell temperature: T_cell = T_amb + (NOCT-20)/800 * G_W_m2
+  // Using average irradiance equivalent (GTI as daily kWh/m² → average W/m² during sun hours ~6h)
+  const gAvg = (gti * 1000) / 6.0; // average W/m² during daylight (approx 6 effective sun hours)
+  const tCell = tempAmb + (noct - 20) / 800 * gAvg;
+  const tempLossFactor = 1 + tempCoef * (tCell - 25); // tempCoef is negative, so this < 1
+  const tempLoss = Math.max(0.5, tempLossFactor); // floor at 50% to avoid nonsense
+
+  const soiling = parseFloat(document.getElementById('soiling').value)/100;
+  const pr = invEff * (1 - cableLoss) * tempLoss * (1-soiling) * 0.98 * 0.99 * (1 - unavail);
   const hsp = gti;
-  const daily = kwp*hsp*pr;
-  const annual = daily*365;
-  const cf = (daily/(kwp*24))*100;
-  const co2 = annual*0.404/1000;
+  const daily = kwp * hsp * pr;
+  const annual = daily * 365;
+  const yieldSpec = annual / kwp;
+  const cf = (daily / (kwp * 24)) * 100;
+  const co2 = annual * 0.404 / 1000;
+  const tempLossPct = ((1 - tempLoss) * 100);
+
   document.getElementById('r-annual').textContent = (annual/1000).toFixed(2);
   document.getElementById('r-monthly').textContent = Math.round(annual/12);
+  document.getElementById('r-yield').textContent = Math.round(yieldSpec);
   document.getElementById('r-hsp').textContent = hsp.toFixed(2);
   document.getElementById('r-pr').textContent = pr.toFixed(3);
   document.getElementById('r-cf').textContent = cf.toFixed(1);
   document.getElementById('r-co2').textContent = co2.toFixed(1);
-  document.getElementById('losses-detail').innerHTML = [
+
+  let lossRows = [
     {k:'Panel (η='+Math.round(panEff*100)+'%)', v:(panEff*100).toFixed(1)+'%'},
     {k:'Inversor', v:(invEff*100).toFixed(1)+'%'},
     {k:'Cableado', v:((1-cableLoss)*100).toFixed(1)+'%'},
-    {k:'T celda ('+tCell.toFixed(0)+'°C)', v:((tempLoss<0?0:tempLoss)*100).toFixed(1)+'%'},
-    {k:'Suciedad estimada', v:'97.0%'},
+    {k:'T celda: '+tCell.toFixed(0)+'°C (T_amb+'+((tCell-tempAmb).toFixed(0))+'°C)', v:(tempLoss*100).toFixed(1)+'% ('+(tempLossPct>0?'+':'')+(-tempLossPct).toFixed(1)+'%)'},
+    {k:'Suciedad / soiling', v:((1-soiling)*100).toFixed(1)+'% (-'+( soiling*100).toFixed(1)+'%)'},
     {k:'Mismatch paneles', v:'98.0%'},
     {k:'Sombras estimadas', v:'99.0%'},
-    {k:'Ganancia tipo sistema', v:'×'+sysGain.toFixed(2)},
-  ].map(l=>`<div class="row-info"><span class="k">${l.k}</span><span class="v">${l.v}</span></div>`).join('');
-  window._monthly = getMonthly(lat, gti).map(m=>Math.round(kwp*m*pr));
+    {k:'Indisponibilidad', v:((1-unavail)*100).toFixed(1)+'% (-'+(unavail*100).toFixed(1)+'%)'},
+    {k: sysType==='bifacial' ? 'Ganancia bifacial neta' : sysType==='utility' ? 'Ganancia sistema utility' : 'Ganancia tipo sistema',
+      v: sysType==='bifacial' ? '+' + (bifGainPct*100).toFixed(2)+'% (máx.+2%)' : '×'+sysGain.toFixed(2)},
+  ];
+  if(sysType==='utility'){
+    const w = parseFloat(document.getElementById('u-width').value)||2.0;
+    const sep = parseFloat(document.getElementById('u-sep').value)||2.5;
+    const gcr = w/(w+sep);
+    lossRows.push({k:'GCR (sep. '+sep+'m)', v:(gcr*100).toFixed(0)+'%'});
+  }
+  document.getElementById('losses-detail').innerHTML = lossRows
+    .map(l=>`<div class="row-info"><span class="k">${l.k}</span><span class="v">${l.v}</span></div>`).join('');
+
+  // monthly generation in kWh
+  const monthlyGHI = getMonthly(lat, gti); // kWh/m²/mes
+  window._monthly = monthlyGHI.map(m=>Math.round(kwp*(m/30.4)*pr)); // daily avg * 30.4
   window._annual = annual;
   window._deg = degradation;
   window._kwp = kwp;
@@ -446,12 +726,17 @@ function calcPyr() {
   const tempCoef = parseFloat(document.getElementById('temp-coef').value)/10000;
   const invEff = parseFloat(document.getElementById('inv-eff').value)/100;
   const cableLoss = parseFloat(document.getElementById('cable-loss').value)/100;
-  const tCell = tempA + (noct-20)/0.8*(G/1000) - 1.5*wind;
-  const tempLoss = 1 + tempCoef*(tCell-25);
-  const prNow = invEff*(1-cableLoss)*(tempLoss<0?0:tempLoss)*0.97*0.98*0.99;
+  // Correct formula: T_cell = T_amb + (NOCT-20)/800 * G_Wm2
+  // Wind cooling correction: each m/s above 1 m/s reduces T_cell by ~1.5°C
+  const tCell = tempA + (noct-20)/800*G - Math.max(0, (wind-1)*1.5);
+  const tempLossFactor = 1 + tempCoef*(tCell-25);
+  const tempLoss = Math.max(0.5, tempLossFactor);
+  const unavail = parseFloat(document.getElementById('unavail').value)/100;
+  const soilingPyr = parseFloat(document.getElementById('soiling').value)/100;
+  const prNow = invEff*(1-cableLoss)*tempLoss*(1-soilingPyr)*0.98*0.99*(1-unavail);
   const pow = kwp*(G/1000)*prNow;
   const dailyR = kwp*ghiDay*prNow;
-  const prBase = invEff*(1-cableLoss)*0.97*0.98*0.99;
+  const prBase = invEff*(1-cableLoss)*(1-soilingPyr)*0.98*0.99;
   const dailyT = kwp*ghiDay*prBase;
   const prR = dailyR/dailyT;
   document.getElementById('pyr-pow').textContent = pow.toFixed(2);
@@ -485,6 +770,221 @@ function renderReadings(){
   let h='<table class="log"><thead><tr><th>Hora</th><th>Mes</th><th>G W/m²</th><th>P kW</th></tr></thead><tbody>';
   readings.slice(-10).reverse().forEach(r=>{h+=`<tr><td>${r.t}</td><td>${r.m}</td><td>${r.G}</td><td>${r.pow.toFixed(2)}</td></tr>`;});
   el.innerHTML=h+'</tbody></table>';
+}
+
+
+// ─── REPORT ENGINE ───────────────────────
+const LOGO_B64 = 'data:image/jpeg;base64,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';
+
+function getReportData() {
+  return {
+    client: document.getElementById('rpt-client').value || 'Cliente',
+    location: document.getElementById('rpt-location').value || '',
+    from: document.getElementById('rpt-from').value,
+    to: document.getElementById('rpt-to').value || '',
+    lat: document.getElementById('lat').value,
+    lon: document.getElementById('lon').value,
+    kwp: document.getElementById('kwp').value,
+    sysType: document.getElementById('sys-type').options[document.getElementById('sys-type').selectedIndex].text,
+    panelTech: document.getElementById('panel-tech').options[document.getElementById('panel-tech').selectedIndex].text,
+    annual: document.getElementById('r-annual').textContent,
+    monthly: document.getElementById('r-monthly').textContent,
+    yield_v: document.getElementById('r-yield').textContent,
+    hsp: document.getElementById('r-hsp').textContent,
+    pr: document.getElementById('r-pr').textContent,
+    cf: document.getElementById('r-cf').textContent,
+    co2: document.getElementById('r-co2').textContent,
+    y25: document.getElementById('r-25y').textContent,
+    ghi: document.getElementById('m-ghi').textContent,
+    temp: document.getElementById('m-temp').textContent,
+    albedo: document.getElementById('m-albedo').textContent,
+    date: new Date().toLocaleDateString('es-ES', {day:'2-digit',month:'long',year:'numeric'})
+  };
+}
+
+function chartToBase64(id) {
+  try { return document.getElementById(id).toDataURL('image/png'); } catch(e) { return ''; }
+}
+
+function buildReportHTML(d) {
+  const cGen = chartToBase64('chartGen');
+  const cLife = chartToBase64('chartLife');
+  const cMo = chartToBase64('chartMonthly');
+  return `<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1a1a18;background:#fff;}
+@media print{
+  body{margin:0;padding:0;}
+  .page{padding:20px 24px 32px;max-width:100%;}
+  .k{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .k.a{background:#FAEEDA!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .k.t{background:#E1F5EE!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .hdr{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .tag{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  h2{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .en{page-break-before:always;}
+  img{max-width:100%!important;}
+}
+.page{max-width:780px;margin:0 auto;padding:36px 36px 52px;}
+.hdr{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #2D7CC1;padding-bottom:16px;margin-bottom:24px;}
+.hdr img{height:50px;}
+.hdr-r{text-align:right;}
+.hdr-r .co{font-size:17px;font-weight:700;color:#2D7CC1;}
+.hdr-r .dt{font-size:11px;color:#999;margin-top:3px;}
+h1{font-size:21px;font-weight:700;margin-bottom:4px;}
+h2{font-size:14px;font-weight:700;color:#2D7CC1;margin:20px 0 10px;padding-left:9px;border-left:4px solid #8DC63F;}
+.sub{font-size:13px;color:#555;margin-bottom:4px;}
+.intro{font-size:13px;color:#333;line-height:1.75;margin:12px 0 16px;}
+.kg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px;}
+.kg2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:10px;}
+.k{background:#f1efe8;border-radius:8px;padding:12px;}
+.k.a{background:#FAEEDA;}
+.k.t{background:#E1F5EE;}
+.k .l{font-size:10px;color:#888;margin-bottom:3px;}
+.k.a .l{color:#BA7517;}
+.k.t .l{color:#0F6E56;}
+.k .v{font-size:21px;font-weight:700;color:#1a1a18;}
+.k.a .v{color:#854F0B;}
+.k.t .v{color:#0F6E56;}
+.k .u{font-size:10px;color:#aaa;}
+table.p{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px;}
+table.p td{padding:6px 8px;border-bottom:0.5px solid #e8e6e0;}
+table.p td:first-child{color:#666;width:55%;}
+table.p td:last-child{font-weight:600;text-align:right;}
+.ci{width:100%;border-radius:6px;margin:8px 0;}
+.ftr{margin-top:36px;padding-top:14px;border-top:1px solid #ddd;display:flex;justify-content:space-between;align-items:center;}
+.ftr .fl{font-size:11px;color:#999;line-height:1.6;}
+.ftr img{height:30px;opacity:0.65;}
+.en{margin-top:36px;border-top:2px dashed #2D7CC1;padding-top:28px;}
+.tag{display:inline-block;font-size:10px;font-weight:700;padding:3px 9px;border-radius:4px;margin-bottom:12px;letter-spacing:.05em;color:#fff;}
+.tag.es{background:#2D7CC1;}
+.tag.en{background:#8DC63F;}
+</style></head><body><div class="page">
+<div class="hdr"><img src="${LOGO_B64}" alt="GENERA"><div class="hdr-r"><div class="co">GENERA Energía Solar</div><div class="dt">Informe: ${d.date}</div></div></div>
+
+<span class="tag es">ESPAÑOL</span>
+<h1>Estudio de Generación Solar Fotovoltaica</h1>
+<p class="sub"><strong>Cliente/Proyecto:</strong> ${d.client}</p>
+${d.location ? `<p class="sub"><strong>Ubicación:</strong> ${d.location} (Lat ${d.lat}, Lon ${d.lon})</p>` : `<p class="sub"><strong>Coordenadas:</strong> Lat ${d.lat}, Lon ${d.lon}</p>`}
+<p class="intro">Estimado cliente,<br><br>A continuación le presentamos el análisis de generación energética para su instalación fotovoltaica, elaborado con datos de irradiancia solar, temperatura ambiente y parámetros técnicos del sistema. Los resultados reflejan la producción esperada bajo condiciones reales de operación.</p>
+
+<h2>Resultados principales</h2>
+<div class="kg">
+  <div class="k a"><div class="l">Energía anual</div><div class="v">${d.annual}</div><div class="u">MWh/año</div></div>
+  <div class="k a"><div class="l">Media mensual</div><div class="v">${d.monthly}</div><div class="u">kWh/mes</div></div>
+  <div class="k"><div class="l">Rendimiento específico</div><div class="v">${d.yield_v}</div><div class="u">kWh/kWp·año</div></div>
+</div>
+<div class="kg">
+  <div class="k"><div class="l">Performance Ratio</div><div class="v">${d.pr}</div><div class="u">—</div></div>
+  <div class="k"><div class="l">Horas sol pico/día</div><div class="v">${d.hsp}</div><div class="u">HSP/día</div></div>
+  <div class="k t"><div class="l">CO₂ evitado</div><div class="v">${d.co2}</div><div class="u">ton CO₂/año</div></div>
+</div>
+<div class="kg2">
+  <div class="k"><div class="l">Factor de capacidad</div><div class="v">${d.cf}</div><div class="u">%</div></div>
+  <div class="k t"><div class="l">Energía total 25 años</div><div class="v">${d.y25}</div><div class="u">MWh</div></div>
+</div>
+
+<h2>Parámetros del sistema</h2>
+<table class="p">
+  <tr><td>Potencia instalada</td><td>${d.kwp} kWp</td></tr>
+  <tr><td>Tipo de instalación</td><td>${d.sysType}</td></tr>
+  <tr><td>Tecnología de panel</td><td>${d.panelTech}</td></tr>
+  <tr><td>Irradiancia GHI media</td><td>${d.ghi} kWh/m²/día</td></tr>
+  <tr><td>Temperatura media ambiente</td><td>${d.temp} °C</td></tr>
+  <tr><td>Albedo superficie</td><td>${d.albedo}</td></tr>
+</table>
+
+${cMo ? `<h2>Irradiancia mensual</h2><img class="ci" src="${cMo}" alt="Irradiancia mensual">` : ''}
+${cGen ? `<h2>Generación mensual estimada</h2><img class="ci" src="${cGen}" alt="Generación mensual">` : ''}
+${cLife ? `<h2>Proyección de generación a 25 años</h2><img class="ci" src="${cLife}" alt="Proyección 25 años">` : ''}
+
+<div class="en">
+<span class="tag en">ENGLISH</span>
+<h1>Solar Photovoltaic Generation Study</h1>
+<p class="sub"><strong>Client/Project:</strong> ${d.client}</p>
+${d.location ? `<p class="sub"><strong>Location:</strong> ${d.location} (Lat ${d.lat}, Lon ${d.lon})</p>` : `<p class="sub"><strong>Coordinates:</strong> Lat ${d.lat}, Lon ${d.lon}</p>`}
+<p class="intro">Dear client,<br><br>Please find below the energy generation analysis for your photovoltaic installation, prepared using solar irradiance data, ambient temperature, and technical system parameters. The results reflect the expected production under real operating conditions.</p>
+
+<h2>Key Results</h2>
+<div class="kg">
+  <div class="k a"><div class="l">Annual energy</div><div class="v">${d.annual}</div><div class="u">MWh/year</div></div>
+  <div class="k a"><div class="l">Monthly average</div><div class="v">${d.monthly}</div><div class="u">kWh/month</div></div>
+  <div class="k"><div class="l">Specific yield</div><div class="v">${d.yield_v}</div><div class="u">kWh/kWp·year</div></div>
+</div>
+<div class="kg">
+  <div class="k"><div class="l">Performance Ratio</div><div class="v">${d.pr}</div><div class="u">—</div></div>
+  <div class="k"><div class="l">Peak sun hours/day</div><div class="v">${d.hsp}</div><div class="u">PSH/day</div></div>
+  <div class="k t"><div class="l">CO₂ avoided</div><div class="v">${d.co2}</div><div class="u">ton CO₂/year</div></div>
+</div>
+<div class="kg2">
+  <div class="k"><div class="l">Capacity factor</div><div class="v">${d.cf}</div><div class="u">%</div></div>
+  <div class="k t"><div class="l">Total energy 25 years</div><div class="v">${d.y25}</div><div class="u">MWh</div></div>
+</div>
+
+<h2>System Parameters</h2>
+<table class="p">
+  <tr><td>Installed capacity</td><td>${d.kwp} kWp</td></tr>
+  <tr><td>Installation type</td><td>${d.sysType}</td></tr>
+  <tr><td>Panel technology</td><td>${d.panelTech}</td></tr>
+  <tr><td>Solar irradiance GHI</td><td>${d.ghi} kWh/m²/day</td></tr>
+  <tr><td>Average ambient temperature</td><td>${d.temp} °C</td></tr>
+  <tr><td>Surface albedo</td><td>${d.albedo}</td></tr>
+</table>
+</div>
+
+<div class="ftr">
+  <div class="fl">GENERA Energía Solar · ${d.from}<br>Informe generado automáticamente con Solar PV Calculator · Automatically generated with Solar PV Calculator</div>
+  <img src="${LOGO_B64}" alt="GENERA">
+</div>
+</div></body></html>`;
+}
+
+async function generatePDF() {
+  const d = getReportData();
+  const html = buildReportHTML(d);
+
+  // Open report in hidden iframe, render with browser print-to-PDF
+  const printWin = window.open('', '_blank', 'width=900,height=700');
+  if(!printWin) { alert('Permite ventanas emergentes para generar el PDF.'); return; }
+  printWin.document.write(html);
+  printWin.document.close();
+  printWin.focus();
+  // Give charts/images time to render then trigger print dialog (Save as PDF)
+  setTimeout(() => {
+    printWin.print();
+  }, 800);
+}
+
+function openOutlook() {
+  const d = getReportData();
+  if(!d.to) { alert('Introduce el correo del cliente antes de continuar.'); return; }
+  const subj = encodeURIComponent('Estudio de Generación Solar FV / Solar PV Study — ' + d.client);
+  const body = encodeURIComponent(
+    'Estimado cliente / Dear client,\n\n' +
+    'Adjuntamos el estudio de generación solar para: ' + d.client + '\n' +
+    'Please find the solar generation study for: ' + d.client + '\n\n' +
+    '━━━━ RESULTADOS / KEY RESULTS ━━━━\n\n' +
+    '⚡ Energía anual / Annual energy: ' + d.annual + ' MWh/año\n' +
+    '📅 Media mensual / Monthly avg: ' + d.monthly + ' kWh/mes\n' +
+    '📊 Rendimiento / Specific yield: ' + d.yield_v + ' kWh/kWp·año\n' +
+    '🔆 Horas sol pico / PSH: ' + d.hsp + ' h/día\n' +
+    '⚙️ Performance Ratio: ' + d.pr + '\n' +
+    '🌿 CO₂ evitado / avoided: ' + d.co2 + ' ton/año\n' +
+    '📈 Total 25 años / 25-year total: ' + d.y25 + ' MWh\n\n' +
+    '━━━━ SISTEMA / SYSTEM ━━━━\n\n' +
+    'Potencia / Capacity: ' + d.kwp + ' kWp\n' +
+    'Tipo / Type: ' + d.sysType + '\n' +
+    'Panel: ' + d.panelTech + '\n' +
+    'Coordenadas / Coordinates: Lat ' + d.lat + ', Lon ' + d.lon + '\n' +
+    (d.location ? 'Proyecto / Project: ' + d.location + '\n' : '') +
+    '\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+    'Para consultas / For enquiries:\n' +
+    'GENERA Energía Solar\n' + d.from + '\n\n' +
+    'Saludos cordiales / Kind regards'
+  );
+  window.open('mailto:' + d.to + '?subject=' + subj + '&body=' + body, '_self');
 }
 
 onLatLonChange();
