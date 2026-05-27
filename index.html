@@ -186,17 +186,7 @@
 
     <!-- UBICACIÓN -->
     <div class="panel active" id="panel-ubicacion">
-      <!-- PROJECT MANAGER -->
-      <div class="section">
-        <div class="section-title"><i class="ti ti-folder"></i> Proyectos guardados</div>
-        <div style="display:flex;gap:6px;margin-bottom:10px">
-          <select id="project-select" style="flex:1;font-size:14px;padding:9px 10px;border:0.5px solid var(--border-sec);border-radius:var(--radius);background:var(--bg-sec);color:var(--text);-webkit-appearance:none;" onchange="loadProject()">
-            <option value="">— Selecciona un proyecto —</option>
-          </select>
-          <button onclick="deleteProject()" style="padding:9px 12px;border:0.5px solid var(--red-text);border-radius:var(--radius);background:transparent;color:var(--red-text);font-size:18px;cursor:pointer;" title="Eliminar proyecto">🗑</button>
-        </div>
-        <div id="active-project-badge" style="display:none;font-size:12px;padding:6px 10px;background:var(--teal-fill);color:var(--teal-text);border-radius:var(--radius);margin-bottom:8px;font-weight:600;"></div>
-      </div>
+
 
       <div class="section">
         <div class="section-title"><i class="ti ti-map-pin"></i> Coordenadas</div>
@@ -205,12 +195,7 @@
           <div class="field"><label>Longitud</label><input type="number" id="lon" value="-90.51" step="0.01" inputmode="decimal" oninput="onLatLonChange()"></div>
         </div>
         <button class="btn-sec" style="margin-bottom:8px" onclick="getLocation()"><i class="ti ti-gps"></i> Usar mi ubicación GPS</button>
-        <div id="loc-msg" style="margin-bottom:8px"></div>
-        <!-- Save project -->
-        <div style="display:flex;gap:6px">
-          <input type="text" id="project-name" placeholder="Nombre del proyecto..." style="flex:1;font-size:14px;padding:9px 12px;border:0.5px solid var(--border-sec);border-radius:var(--radius);background:var(--bg-sec);color:var(--text);">
-          <button onclick="saveProject()" style="padding:9px 14px;background:var(--amber-mid);color:#fff;border:none;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;"><i class="ti ti-device-floppy"></i> Guardar</button>
-        </div>
+        <div id="loc-msg"></div>
       </div>
       <div class="section">
         <div class="section-title"><i class="ti ti-cloud"></i> Meteorología <span id="meteo-source-badge" style="font-size:10px;padding:2px 7px;border-radius:4px;background:var(--bg-sec);color:var(--text-ter);margin-left:4px;">estimada</span></div>
@@ -523,7 +508,6 @@
 
       <div class="section">
         <div class="section-title"><i class="ti ti-history"></i> Registro de lecturas</div>
-        <div id="active-project-pyr" class="note" style="margin-bottom:8px;display:none"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
           <button class="btn-sec" style="margin-bottom:0" onclick="addReading()"><i class="ti ti-plus"></i> Agregar</button>
           <button class="btn-sec" style="margin-bottom:0" onclick="exportReadingsXLSX()"><i class="ti ti-file-spreadsheet"></i> Excel</button>
@@ -969,19 +953,25 @@ function calcAll() {
   const tiltGain = 1 + 0.005*Math.sin(2*tiltR) + 0.003*Math.sin(latR)*Math.cos(tiltR);
   const gti = ghi*tiltGain*azGain*sysGain;
 
-  // Correct cell temperature: T_cell = T_amb + (NOCT-20)/800 * G_W_m2
-  // Using average irradiance equivalent (GTI as daily kWh/m² → average W/m² during sun hours ~6h)
-  const gAvg = (gti * 1000) / 6.0; // average W/m² during daylight (approx 6 effective sun hours)
-  const tCell = tempAmb + (noct - 20) / 800 * gAvg;
-  const tempLossFactor = 1 + tempCoef * (tCell - 25); // tempCoef is negative, so this < 1
-  const tempLoss = Math.max(0.5, tempLossFactor); // floor at 50% to avoid nonsense
+  // Cell temp at 1000 W/m² reference (IEC standard) — gives realistic annual average
+  const tCell = tempAmb + (noct - 20) / 800 * 1000;
+  const tempLossFactor = 1 + tempCoef * (tCell - 25);
+  const tempLoss = Math.max(0.5, tempLossFactor);
 
   const soiling = parseFloat(document.getElementById('soiling').value)/100;
-  const pr = invEff * (1 - cableLoss) * tempLoss * (1-soiling) * 0.98 * 0.99 * (1 - unavail);
-  const hsp = gti;
-  const daily = kwp * hsp * pr;
+  // Loss factors
+  const mismatch  = 0.98;  // 2% mismatch
+  const shadingDC = 0.99;  // 1% DC shading
+  // Utility scale: additional DC/AC cable, MT and transformer losses
+  const wiringDC  = sysType==='utility' ? 0.987 : 1.0;  // 1.3% DC wiring
+  const wiringAC  = sysType==='utility' ? 0.987 : 1.0;  // 1.3% AC wiring
+  const mtLoss    = sysType==='utility' ? 0.997 : 1.0;  // 0.3% medium voltage
+  const trafo     = sysType==='utility' ? 0.99  : 1.0;  // 1.0% transformer
+  const pr = invEff * (1 - cableLoss) * tempLoss * (1-soiling) * mismatch * shadingDC * wiringDC * wiringAC * mtLoss * trafo * (1 - unavail);
+  const daily = kwp * gti * pr;
   const annual = daily * 365;
-  const yieldSpec = annual / kwp;
+  const yieldSpec = annual / kwp;          // kWh/kWp·año
+  const hsp = yieldSpec / 365;             // HSP = kWh/kWp·año / 365
   const cf = (daily / (kwp * 24)) * 100;
   const co2 = annual * 0.404 / 1000;
   const tempLossPct = ((1 - tempLoss) * 100);
@@ -1000,8 +990,14 @@ function calcAll() {
     {k:'Cableado', v:((1-cableLoss)*100).toFixed(1)+'%'},
     {k:'T celda: '+tCell.toFixed(0)+'°C (T_amb+'+((tCell-tempAmb).toFixed(0))+'°C)', v:(tempLoss*100).toFixed(1)+'% ('+(tempLossPct>0?'+':'')+(-tempLossPct).toFixed(1)+'%)'},
     {k:'Suciedad / soiling', v:((1-soiling)*100).toFixed(1)+'% (-'+( soiling*100).toFixed(1)+'%)'},
-    {k:'Mismatch paneles', v:'98.0%'},
-    {k:'Sombras estimadas', v:'99.0%'},
+    {k:'Mismatch paneles', v:(mismatch*100).toFixed(1)+'%'},
+    {k:'Sombras DC', v:(shadingDC*100).toFixed(1)+'%'},
+    ...(sysType==='utility' ? [
+      {k:'Cableado DC', v:(wiringDC*100).toFixed(1)+'%'},
+      {k:'Cableado AC', v:(wiringAC*100).toFixed(1)+'%'},
+      {k:'Media Tensión', v:(mtLoss*100).toFixed(1)+'%'},
+      {k:'Transformación', v:(trafo*100).toFixed(1)+'%'},
+    ] : []),
     {k:'Indisponibilidad', v:((1-unavail)*100).toFixed(1)+'% (-'+(unavail*100).toFixed(1)+'%)'},
     {k: sysType==='bifacial' ? 'Ganancia bifacial neta' : sysType==='utility' ? 'Ganancia sistema utility' : 'Ganancia tipo sistema',
       v: sysType==='bifacial' ? '+' + (bifGainPct*100).toFixed(2)+'% (máx.+2%)' : '×'+sysGain.toFixed(2)},
@@ -1027,11 +1023,10 @@ function calcAll() {
     // GTI for this month
     const mGti = mGhi * tiltGain * azGain * sysGain;
     // Cell temp this month
-    const gAvgMo = (mGti*1000)/6.0;
-    const tCellMo = mTemp + (noct-20)/800*gAvgMo;
+    const tCellMo = mTemp + (noct-20)/800*1000;
     const tempLossMo = Math.max(0.5, 1 + tempCoef*(tCellMo-25));
     const soilingV = parseFloat(document.getElementById('soiling').value)/100;
-    const prMo = invEff*(1-cableLoss)*tempLossMo*(1-soilingV)*0.98*0.99*(1-unavail);
+    const prMo = invEff*(1-cableLoss)*tempLossMo*(1-soilingV)*mismatch*shadingDC*wiringDC*wiringAC*mtLoss*trafo*(1-unavail);
     const eMo = kwp * mGti * prMo * DAYS[i];
     window._monthly.push(Math.round(eMo));
     window._moDetails.push({ghi:mGhi, tcell:tCellMo, pr:prMo});
@@ -1139,7 +1134,6 @@ function addReading() {
   const pr   = parseFloat(document.getElementById('pyr-pr').textContent)||0;
   const tloss = document.getElementById('pyr-tloss').textContent||'—';
   readings.push({G,t,m,pow,tc,pr,tloss});
-  saveReadingsToProject();
   renderReadings();
 }
 function clearReadings(){ readings=[]; renderReadings(); }
@@ -1248,110 +1242,6 @@ function updateMeteoTable() {
   }
 }
 
-// ─── PROJECT MANAGER ─────────────────────
-let activeProject = null;
-
-function getProjects() {
-  try { return JSON.parse(localStorage.getItem('solarProjects')||'{}'); } catch(e) { return {}; }
-}
-function saveProjects(p) {
-  try { localStorage.setItem('solarProjects', JSON.stringify(p)); } catch(e) {}
-}
-
-function saveProject() {
-  const name = document.getElementById('project-name').value.trim();
-  if(!name) { alert('Escribe un nombre para el proyecto.'); return; }
-  const projects = getProjects();
-  const lat = document.getElementById('lat').value;
-  const lon = document.getElementById('lon').value;
-  const kwp = document.getElementById('kwp').value;
-  const sysType = document.getElementById('sys-type').value;
-  const tech = document.getElementById('panel-tech').value;
-  const meteo = monthlyMeteo ? JSON.stringify(monthlyMeteo) : null;
-  projects[name] = {
-    name, lat, lon, kwp, sysType, tech, meteo,
-    savedAt: new Date().toLocaleDateString('es-ES'),
-    readings: projects[name]?.readings || []
-  };
-  saveProjects(projects);
-  activeProject = name;
-  document.getElementById('project-name').value = '';
-  updateProjectSelect();
-  showActiveProject();
-  alert('✓ Proyecto "' + name + '" guardado.');
-}
-
-function loadProject() {
-  const name = document.getElementById('project-select').value;
-  if(!name) return;
-  const projects = getProjects();
-  const p = projects[name];
-  if(!p) return;
-  activeProject = name;
-  document.getElementById('lat').value = p.lat;
-  document.getElementById('lon').value = p.lon;
-  document.getElementById('kwp').value = p.kwp;
-  document.getElementById('sys-type').value = p.sysType;
-  document.getElementById('panel-tech').value = p.tech;
-  if(p.meteo) { monthlyMeteo = JSON.parse(p.meteo); updateMeteoTable(); }
-  else { monthlyMeteo = null; }
-  readings = p.readings || [];
-  renderReadings();
-  onSysTypeChange();
-  onLatLonChange();
-  showActiveProject();
-}
-
-function deleteProject() {
-  const name = document.getElementById('project-select').value;
-  if(!name) return;
-  if(!confirm('¿Eliminar proyecto "' + name + '"?')) return;
-  const projects = getProjects();
-  delete projects[name];
-  saveProjects(projects);
-  if(activeProject===name) activeProject=null;
-  updateProjectSelect();
-  showActiveProject();
-}
-
-function updateProjectSelect() {
-  const sel = document.getElementById('project-select');
-  const projects = getProjects();
-  const keys = Object.keys(projects);
-  sel.innerHTML = '<option value="">— Selecciona un proyecto —</option>';
-  keys.forEach(k => {
-    const opt = document.createElement('option');
-    opt.value = k;
-    opt.textContent = k + ' · ' + projects[k].savedAt + ' · ' + projects[k].lat + ',' + projects[k].lon;
-    if(k===activeProject) opt.selected=true;
-    sel.appendChild(opt);
-  });
-}
-
-function showActiveProject() {
-  const badge = document.getElementById('active-project-badge');
-  const pyrNote = document.getElementById('active-project-pyr');
-  if(activeProject) {
-    badge.style.display='block';
-    badge.textContent='📁 Proyecto activo: ' + activeProject;
-    pyrNote.style.display='block';
-    pyrNote.textContent='📁 Lecturas asociadas a: ' + activeProject;
-  } else {
-    badge.style.display='none';
-    pyrNote.style.display='none';
-  }
-}
-
-// Save readings to active project whenever added
-function saveReadingsToProject() {
-  if(!activeProject) return;
-  const projects = getProjects();
-  if(projects[activeProject]) {
-    projects[activeProject].readings = readings;
-    saveProjects(projects);
-  }
-}
-
 // ─── XLSX EXPORT ─────────────────────────
 function exportReadingsXLSX() {
   if(!readings.length) { alert('No hay lecturas para exportar.'); return; }
@@ -1367,8 +1257,7 @@ function exportReadingsXLSX() {
     r.tloss, lat, lon
   ]);
   // Build CSV
-  const csv = [header, ...rows].map(r => r.join(',')).join('
-');
+  const csv = [header, ...rows].map(r => r.join(',')).join('\n');
   const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1617,7 +1506,6 @@ function openOutlook() {
   window.open('mailto:' + d.to + '?subject=' + subj + '&body=' + body, '_self');
 }
 
-updateProjectSelect();
 onLatLonChange();
 updateMeteoTable();
 calcPyr();
